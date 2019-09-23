@@ -1,0 +1,65 @@
+Tools and commands you will need to be familiar with in order to enjoy these
+exercises:
+
+bc  -- A simple way to convert hex to decimal and vice-versa. Also does simple
+       math.
+
+Always run 'bc -lq'. Much more precision than plain bc. Or better yet, put
+this into your .profile, .bashrc, or the equiv:
+
+alias bc='bc -lq'
+
+Examples:
+
+$ bc -lq
+267+345  <-- input
+612      <-- output
+
+obase=16 <-- input - changing the output base to 16 from the default of 10
+100      <-- input
+64       <-- output
+
+Quit bc with CTRL-D, then start over to make the opposite conversion:
+
+$ bc -lq
+ibase=16 <-- input - changing the input base to 16 from the default of 10
+64       <-- input
+100      <-- output
+
+
+
+tbdump
+	See README.tbdump
+
+tbpatch
+	See README.tbpatch
+
+oncheck -pt
+	Display information from a partition page. E.g.:
+	oncheck -pt jc:jctab
+
+oncheck -pP
+	Display pages based on physical address. E.g.:
+	oncheck -pP 1 200    # Print page offset 200 in chunk 1
+	oncheck -pP 0xa 15 5 # Print 5 pages in chunk 10, starting at offset 15
+
+oncheck -pp
+	Display pages based on logical page number. E.g.:
+	oncheck -pp 0x10011E 25  # Print logical page 25 in partnum 0x10011E
+
+oncheck -cDI
+	Check a table's data partitions, then all indexes, comparing index 
+	items against the actual data rows.
+
+oncheck -pD
+	Display a table's data
+
+oncheck -pK
+	Display a table's btrees. E.g.:
+	oncheck -pK jc:jctab
+
+onmode -B reset
+	Flush and invalidate the entire buffer cache. The purpose of this is
+	to ensure that the next time the server needs a page, it is read
+	directly from disk, thereby picking up any tweaks you've made to the
+	page.

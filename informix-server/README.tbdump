@@ -1,0 +1,166 @@
+tbdump is a little tool Informix Tech Support has been using to display chunk
+pages since time immemorial. It's the perfect marriage of simplicity and
+usefulness. The basic syntax is:
+
+tbdump -d <chunk path> -o <page offset> -n <number of pgs>
+
+as in:
+
+tbdump -d /informix_chunks/chunk12 -o 0x11af -n 10
+
+Number args can always be expressed in hex or decimal.
+
+The tbdump program you'll be playing with today is assuming your base page
+size is 2k, which it is on linux.
+
+The practice_pgs file contains the first 12 pages from a root chunk I made
+last week. Let's use this truncated chunk to practice with tbdump. Try this
+first:
+
+tbdump -d practice_pgs -o 0 -n 1 
+
+You should see this:
+
+Page 00000000
+=============
+00000000 0000 0000 0100 1EB2 0300 0010 4801 A806 ............H...
+00000010 0000 0000 0000 0000 4942 4D20 496E 666F ........IBM Info
+00000020 726D 6978 2044 796E 616D 6963 2053 6572 rmix Dynamic Ser
+00000030 7665 7220 436F 7079 7269 6768 7420 3139 ver Copyright 19
+00000040 3934 2C20 3230 3139 2020 4942 4D20 436F 94, 2019  IBM Co
+00000050 7270 6F72 6174 696F 6E00 0000 0000 0000 rporation.......
+00000060 0000 0000 0000 0000 0000 0900 0008 0000 ................
+00000070 D461 855D 1F00 0000 C800 0000 3134 2E31 .a.]........14.1
+00000080 302E 7843 3220 2020 2020 2020 2020 2020 0.xC2           
+00000090 0100 0000 0000 0000 0000 0000 0000 0000 ................
+000000A0 0000 0000 0000 0000 0000 0000 0000 0000 ................
+000000B0 *
+00000120 0000 0000 0000 0000 0000 0000 0300 1000 ................
+00000130 6F14 0100 0100 0000 0000 0000 5539 2330 o...........U9#0
+00000140 392D 3230 3139 0000 0000 0000 0000 0000 9-2019..........
+00000150 0000 0000 0000 0000 0000 0000 0000 0000 ................
+00000160 *
+000007F0 2C01 1C00 0000 0000 1800 1401 1EB2 0100 ,...............
+
+A couple of things to note about the output's anatomy: 
+
+All numbers are in hex, including the page number mentioned above the actual 
+dump, which is a series of rows split into columns. 
+
+The left-hand column is not part of the dump, but is the offset into the page 
+of the first byte in that row.  Notice that it increases by 16 (0x10) each 
+time, so each row displays 16 bytes, first in hex, then in ascii.
+
+In the ascii representation, a dot '.' is used for byte values that have no
+associated standard ascii character.
+
+To save space in the output, an asterisk '*' is displayed when a row of bytes 
+is identical to the previous row.  Dozens of rows may be skipped, so it's 
+important to pay attention to the actual byte offset on the left.
+
+
+------------------- Byte Swapping Primer ------------------------
+
+The platform we're dealing with in this lab is intel-based so we'd better get
+used to reading byte-swapped values. Here is a 4-byte integer displayed in
+raw hex format:
+
+89ABCDEF
+
+In case that's confusing I'll split the value into its component bytes:
+
+89 AB CD EF
+
+I.e. two digits per byte. When byte swapping a 4-byte integer we write the 
+bytes backwards like so:
+
+89 AB CD EF --> EF CD AB 89  ==  EFCDAB89
+
+Only numbers (ints, long ints, pointers) are byte-swapped. Non-numeric data,
+like the bytes in a character string, are not swapped.
+
+When a structure of 3 integers is stored in memory or on disk the order
+of the structure's elements remains intact; only the bytes within the
+individual elements are stored in reverse order.
+
+-----------------------------------------------------------------
+
+
+With all that in mind, now let's pay particular attention to a few key common 
+structures shown on nearly all pages including the one we dumped above. The 
+first 24 bytes are the page header:
+
+Page 00000000
+=============
+00000000 0000 0000 0100 1EB2 0300 0010 4801 A806 ............H...
+00000010 0000 0000 0000 0000                     ........        
+         ^^^^ ^^^^ ^^^^ ^^^^ ^^^^ ^^^^ ^^^^ ^^^^
+
+This may all look like gibberish but believe it or not it's as legible
+to a DSD engineer as the string "Hello World", even in byte-swapped
+form. I'll draw your attention to just two things. The first 6 bytes
+are the page address:
+
+Page 00000000
+=============
+00000000 0000 0000 0100
+         ^^^^ ^^^^ ^^^^
+
+The page address is actually a two-element structure: the first 4
+bytes are the page offset, and the remaining two bytes are the chunk
+number. 
+
+         pg offset
+         vvvv vvvv
+         0000 0000 0100
+                   ^^^^
+                   chk#
+
+Again, each of those separate elements is byte-swapped, so "0100"
+unswapped is "0001", or 1. This page is in chunk 1 at page offset 0.
+
+The other element of the header I'll describe here is the 2-byte page flags
+element, which is here:
+
+Page 00000000
+=============
+00000000 0000 0000 0100 F5B1 0300 0010 4801 A806 ............H...
+00000010 0000 0000 0000 0000      ^^^^           ........
+
+The page flags (and there may be more than one flag contained in these
+2 bytes) tell you what type of page you're looking at. This flags value
+contains just one flag, 0x1000 (don't forget to swap what you see in the
+tbdump output above), which indicates it is a reserve page. Some common 
+flags:
+
+0x0001	Data page
+0x0002	Partition page
+0x0004	Chunk free list page
+0x0008	Bitmap page
+0x0010  Btree page
+0x0100	Logical Log page
+0x0800  Page in the physical log
+0x1000  Reserve page
+
+All right, so let's dump all 12 pages in one go and take a look:
+
+tbdump -d practice_pgs -o 0 -n 12 | less 
+
+Recall that the 12 reserve pages are split into these groups:
+
+Page 0:     General info about the instance
+Page 1:     Key configuration parameters and their values
+Pages 2&3:  Checkpoint and Logical Log structures
+Pages 4&5:  DBspace structures
+Pages 6&7:  Chunk structures
+Pages 8&9:  Mirror chunk structures
+Pages A&B:  Archive structures
+
+Just glance through the output from these pages and look for recognizable
+strings. You should see configuration parameters and values on page 1.
+You should see what look like DBspace names on pages 4 & 5, and chunk paths
+on pages 6 & 7. Pay attention to the first 6 bytes of each page, which is
+the address, and notice the chunk number remaining constant while the page
+offset increases by 1 each time.
+
+Good job! You're ready to move on to tbpatch. See README.tbpatch.

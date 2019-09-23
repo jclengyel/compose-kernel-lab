@@ -1,0 +1,120 @@
+Before working with tbpatch, make sure you have a good understanding of
+tbdump. See tbdump.README if you haven't already.
+
+tbpatch is another tool Informix Tech Support has been using to twiddle
+bits all over the world for nearly three decades. It's very limited in
+functionality but very compact as a result, which made it easy to send
+over a 300 baud modem back when dinosaurs and modems roamed the earth.
+
+tbpatch allows you to rewrite 4 bytes anywhere inside a file or raw device as 
+long as you have permission to write to the path and execute tbpatch. You can 
+also write a string to the file/device, overwriting whatever data was there. 
+
+Like tbdump tbpatch is compiled to assume a certain page size, and in the
+case of your tbpatch executable that page size is 2k.
+
+Let's try it! The syntax is reminiscent of tbdump's:
+
+tbpatch -d <chunk path> -o <page offset> -b <byte offset> -v <4-byte value>
+
+For example the following command will write to /informix_chunks/chunk8,
+on page 100, at byte offset 0x60, the value 0x01020304:
+
+tbpatch -d /informix_chunks/chunk8 -o 100 -b 0x60 -v 0x01020304
+
+Instead of a 4-byte value you can also write a string of almost any length
+using the -s option instead of -v, as in:
+
+tbpatch -d /informix_chunks/chunk8 -o 100 -b 0x60 -s "JC WAS HERE"
+
+Let's use your practice pages to play with tbpatch a little.
+
+Run tbdump on page offset 1, which is your configuration page:
+
+tbdump -d practice_pgs -o 1 -n 1 | less
+
+Here's the top of that output:
+
+Page 00000001
+=============
+00000000 0100 0000 0100 0800 5900 0010 8406 1400 ........Y.......
+00000010 0000 0000 0000 0000 524F 4F54 4E41 4D45 ........ROOTNAME
+00000020 2072 6F6F 7464 6273 0052 4F4F 5450 4154  rootdbs.ROOTPAT
+00000030 4820 2F77 6F72 6B31 2F4A 432F 726F 6F74 H /work1/JC/root
+00000040 6368 756E 6B00 524F 4F54 4F46 4653 4554 chunk.ROOTOFFSET
+00000050 2030 0052 4F4F 5453 495A 4520 3330 3030  0.ROOTSIZE 3000
+00000060 3030 004D 4952 524F 5220 3100 4D49 5252 00.MIRROR 1.MIRR
+00000070 4F52 5041 5448 2000 4D49 5252 4F52 4F46 ORPATH .MIRROROF
+00000080 4653 4554 2030 0044 4253 4552 5645 524E FSET 0.DBSERVERN
+00000090 414D 4520 6A63 5F6C 6465 7630 3600 5345 AME jc_ldev06.SE
+000000A0 5256 4552 4E55 4D20 3533 004D 5347 5041 RVERNUM 53.MSGPA
+000000B0 5448 202F 776F 726B 312F 4A43 2F6F 6E6C TH /work1/JC/onl
+000000C0 696E 652E 6C6F 6700 5441 5045 4445 5620 ine.log.TAPEDEV 
+...
+...
+
+First let's change the page address to indicate chunk 7 instead of chunk 1.
+Remember that we can't write fewer than 4 bytes with the -v option, so
+we'll have to overwrite the last 2 bytes of the page offset along with the
+chunk number:
+
+tbpatch -d practice_pgs -o 1 -b 0x2 -v 0x00000700
+
+If you re-run your tbdump command you should see the address has been changed:
+
+Page 00000001
+=============
+00000000 0100 0000 0700 0800 5900 0010 8406 1400 ........Y.......
+00000010 0000 0000 0000 0000 524F 4F54 4E41 4D45 ........ROOTNAME
+00000020 2072 6F6F 7464 6273 0052 4F4F 5450 4154  rootdbs.ROOTPAT
+00000030 4820 2F77 6F72 6B31 2F4A 432F 726F 6F74 H /work1/JC/root
+00000040 6368 756E 6B00 524F 4F54 4F46 4653 4554 chunk.ROOTOFFSET
+00000050 2030 0052 4F4F 5453 495A 4520 3330 3030  0.ROOTSIZE 3000
+00000060 3030 004D 4952 524F 5220 3100 4D49 5252 00.MIRROR 1.MIRR
+00000070 4F52 5041 5448 2000 4D49 5252 4F52 4F46 ORPATH .MIRROROF
+00000080 4653 4554 2030 0044 4253 4552 5645 524E FSET 0.DBSERVERN
+00000090 414D 4520 6A63 5F6C 6465 7630 3600 5345 AME jc_ldev06.SE
+000000A0 5256 4552 4E55 4D20 3533 004D 5347 5041 RVERNUM 53.MSGPA
+000000B0 5448 202F 776F 726B 312F 4A43 2F6F 6E6C TH /work1/JC/onl
+000000C0 696E 652E 6C6F 6700 5441 5045 4445 5620 ine.log.TAPEDEV
+...
+...
+
+
+Now let's write a string to the page. Let's change the word "MIRROR"
+at byte offset 0x63 to "Terror":
+
+tbpatch -d practice_pgs -o 1 -b 0x63 -s "Terror"
+
+Rerun tbdump to check:
+
+Page 00000001
+=============
+00000000 0100 0000 0700 0800 5900 0010 8406 1400 ........Y.......
+00000010 0000 0000 0000 0000 524F 4F54 4E41 4D45 ........ROOTNAME
+00000020 2072 6F6F 7464 6273 0052 4F4F 5450 4154  rootdbs.ROOTPAT
+00000030 4820 2F77 6F72 6B31 2F4A 432F 726F 6F74 H /work1/JC/root
+00000040 6368 756E 6B00 524F 4F54 4F46 4653 4554 chunk.ROOTOFFSET
+00000050 2030 0052 4F4F 5453 495A 4520 3330 3030  0.ROOTSIZE 3000
+00000060 3030 0054 6572 726F 7220 3100 4D49 5252 00.Terror 1.MIRR
+...
+...
+
+
+Backup Copy Files
+-----------------
+
+Now, if you do an 'ls' in your current directory you'll notice two new files:
+pg.1.0 and pg.1.1. Before writing to a page, tbpatch copies the raw 
+before-image of the page to a little backup file in the local directory 
+whose name has the following format:
+
+pg.<page offset>.<counter>
+
+If a patch is fouled up somehow, this backup copy can often be used to undo
+the damage. 
+
+These practice pages are yours to patch however you like for training purposes.
+Experiment for a while. When you feel ready to move on to the exercises, start 
+with the first "Are You Smarter Than A Tech Supporter?" script: aystats1.sh.
+
