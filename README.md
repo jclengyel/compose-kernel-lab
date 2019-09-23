@@ -7,7 +7,7 @@
 
 ### Start docker compose:
     1.  cd to project directory 
-    2.  Run __chmod -R 777  *__
+    2.  Run chmod -R 777 * 
     3.  Run __docker-compose up__
 
 

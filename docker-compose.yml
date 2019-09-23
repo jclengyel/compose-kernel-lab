@@ -9,6 +9,7 @@ services:
           LICENSE: 'accept'
           SIZE:    'small'
           RUN_FILE_PRE_INIT: rhosts.sh 
+          RUN_FILE_POST_INIT: setup.sh 
       ports:
          - 27018:27018
          - 9088:9088
