@@ -1,4 +1,4 @@
-#/bin/sh
+#!/bin/sh
 # Demo script for Partition Free Space Cache
 
 echo " "
@@ -140,23 +140,26 @@ unset DBDELIMITER
 
 NROWS=`cat /tmp/nrows.out`
 PARTNUM=`onstat -T | grep $NROWS | awk '{print $5}'`
-if [ "${PARTNUM}x" == "x" ]
+if [ "${PARTNUM}x" = "x" ]
 then
     echo "Error: Could not determine partnum of db1:tab1"
     exit 1
 fi
 
 # Wait for PFSC to finish being refreshed
-while true
-do
-onstat -g pfsc | grep "B-" > /dev/null 2>&1
-if [ $? -eq 0 ]
+PFSC_BOOST=`onstat -g cfg PFSC_BOOST | grep PFSC_BOOST | awk '{print $2}'`
+if [ $PFSC_BOOST -eq 1 ]
 then
-    break
+    while true
+    do
+    onstat -g pfsc | grep "B-" > /dev/null 2>&1
+    if [ $? -eq 0 ]
+    then
+        break
+    fi
+    sleep 1
+    done
 fi
-sleep 1
-done
-
 echo " "
 echo "We're ready to run the test, which will fire off two small loads"
 echo "simultaneously. The table has been carefully structured to force these"
