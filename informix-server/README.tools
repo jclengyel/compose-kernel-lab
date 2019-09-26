@@ -1,11 +1,12 @@
-Tools and commands you will need to be familiar with in order to enjoy these
-exercises:
+These are some tools and commands you will need to be familiar with in order to
+enjoy these exercises:
 
 bc  -- A simple way to convert hex to decimal and vice-versa. Also does simple
        math.
 
-Always run 'bc -lq'. Much more precision than plain bc. Or better yet, put
-this into your .profile, .bashrc, or the equiv:
+----------------------- BEGIN BC TUTORIAL ----------------------------
+Always run 'bc -lq'. This will give you much more precision than plain bc.
+Better yet, put this into your .profile, .bashrc, or the equiv:
 
 alias bc='bc -lq'
 
@@ -14,6 +15,10 @@ Examples:
 $ bc -lq
 267+345  <-- input
 612      <-- output
+
+$ bc -lq
+3/234322
+.00001280289516135915
 
 obase=16 <-- input - changing the output base to 16 from the default of 10
 100      <-- input
@@ -26,7 +31,21 @@ ibase=16 <-- input - changing the input base to 16 from the default of 10
 64       <-- input
 100      <-- output
 
+One more tip: when inputting hex numbers be sure all letters are in upper
+case. This will not work:
 
+$ bc -lq
+ibase=16
+abcde
+0
+
+But this will work:
+
+$ bc -lq
+ibase=16
+ABCDE
+703710
+----------------------- END BC TUTORIAL ----------------------------
 
 tbdump
 	See README.tbdump
